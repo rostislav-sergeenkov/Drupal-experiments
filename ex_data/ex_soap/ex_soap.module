@@ -21,7 +21,7 @@ function ex_soap_menu() {
     'title' => 'PHP Client',
     'description' => 'PHP Client',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('ex_soap_php_client'),
+    'page arguments' => array('ex_soap_php_client_form'),
     'access arguments' => array('administer my experiments'),
     'file' => 'ex_soap.php_client.inc',
     'weight' => 1,

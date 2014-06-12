@@ -13,10 +13,10 @@
  *
  * @return mixed
  */
-function ex_soap_php_client($form, &$form_state) {
+function ex_soap_php_client_form($form, &$form_state) {
   $form['submit'] = array(
-    'type' => 'submit',
-    'value' => t('Submit'),
+    '#type' => 'submit',
+    '#value' => t('Submit'),
   );
 
   return $form;
@@ -28,6 +28,6 @@ function ex_soap_php_client($form, &$form_state) {
  * @param $form
  * @param $form_state
  */
-function ex_soap_php_client_submit($form, &$form_state) {
+function ex_soap_php_client_form_submit($form, &$form_state) {
   drupal_set_message('API has been requested.');
 }

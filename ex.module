@@ -1,11 +1,18 @@
 <?php
 
 /**
+ * @file
+ * Main functionality for ex module.
+ */
+
+module_load_include('inc', 'system', 'system.admin');
+
+/**
  * Implements hook_menu().
  */
 function ex_menu() {
   $items['admin/ex'] = array(
-    'title' => 'My Examples',
+    'title' => 'My Experiments',
     'description' => 'My Examples settings.',
     'access arguments' => array('administer my experiments'),
     'page callback' => 'ex_config_page',
