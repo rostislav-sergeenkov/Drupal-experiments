@@ -1,0 +1,31 @@
+<?php
+
+/**
+ * @file
+ * Main functionality for ex_soap module.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function ex_soap_menu() {
+  $items['admin/ex/data/soap'] = array(
+    'title' => 'SOAP Experiments',
+    'description' => 'SOAP Experiments',
+    'page callback' => 'system_admin_menu_block_page',
+    'access arguments' => array('administer my experiments'),
+    'weight' => 1,
+  );
+
+  $items['admin/ex/data/soap/php_client'] = array(
+    'title' => 'PHP Client',
+    'description' => 'PHP Client',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ex_soap_php_client'),
+    'access arguments' => array('administer my experiments'),
+    'file' => 'ex_soap.php_client.inc',
+    'weight' => 1,
+  );
+
+  return $items;
+}

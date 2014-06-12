@@ -1,0 +1,4 @@
+name = My Experiments
+description = My PHP and Drupal 7 experiments
+package = Experiments
+core = 7.x

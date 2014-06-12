@@ -1,0 +1,6 @@
+name = Soap Experiments
+description = Soap Experiments
+package = Experiments
+core = 7.x
+
+dependencies[] = ex
