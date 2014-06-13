@@ -1,0 +1,140 @@
+<?php
+
+define('EX_PARSER_SITE_URL', 'https://drupal.org');
+
+// @todo Script should be run in background using batch operations
+
+/**
+ * @file
+ * Main functionality for ex_parser module.
+ */
+
+/**
+ * @see http://blog.andyhunt.info/2011/12/21/using-php-and-curl-to-log-in-to-a-website/
+ * @see http://www.knowledgesutra.com/forums/topic/38162-automatic-login-using-curl/
+ * @see http://lv1.php.net/tidy
+ * @see https://drupal.org/profile/country/Belarus
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function ex_parser_menu() {
+  $items['admin/ex/data/parser'] = array(
+    'title' => 'Drupal.org parser',
+    'description' => 'Drupal.org parser.',
+    'access arguments' => array('administer my experiments'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ex_parser_form'),
+  );
+
+  return $items;
+}
+
+/**
+ * Form builder for parser admin form.
+ *
+ * @param $form
+ * @param $form_state
+ */
+function ex_parser_form($form, &$form_state) {
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Parse Page'),
+  );
+
+  $url = 'https://drupal.org/user/971150';
+  $data = ex_parser_get_profile_data($url);
+
+var_dump($data);
+
+  return $form;
+}
+
+/**
+ * Submit callback for 'ex_parser_form'.
+ *
+ * @param $form
+ * @param $form_state
+ */
+function ex_parser_form_submit($form, &$form_state) {
+  $result = drupal_http_request('https://drupal.org/profile/country/Belarus');
+  dpm($result);
+}
+
+/**
+ * Parse user profile data from d.org url.
+ *
+ * @param $url
+ *
+ * @return array
+ */
+function ex_parser_get_profile_data($url) {
+  $html = drupal_http_request($url);
+  $xpath_pattern_profile_links = ".//*[@class='main']/dl/dd/a";
+  $xpath_pattern_total_commits = ".//*[@class='main']/dl/dd/div/ul/li[last()]";
+  $profile = array();
+  $profile['url'] = $url;
+
+  if (isset($html->data)) {
+    libxml_use_internal_errors(true);
+
+    $dom = new DOMDocument();
+    $dom->recover = true;
+    $dom->strictErrorChecking = false;
+    $dom->loadHTML($html->data);
+
+    $xpath = new DOMXpath($dom);
+
+    // Receive profile links.
+    $links_obj = $xpath->query($xpath_pattern_profile_links);
+    $links = array();
+
+    // @todo check which fields can have multiple values
+    foreach ($links_obj as $link) {
+      $url = $link->getAttribute('href');
+
+      if (substr_count($url, 'linkedin.com')) {
+        $links['linkedin.com'] = $url;
+      }
+      elseif (substr_count($url, 'plus.google.com')) {
+        $links['plus.google.com'] = $url;
+      }
+      elseif (substr_count($url, 'drupal.stackexchange.com')) {
+        $links['drupal.stackexchange.com'] = $url;
+      }
+      elseif (substr_count($url, '/profile/profile_gender/')) {
+        $links['gender'] = array(
+          'name' => $link->nodeValue,
+          'url' => EX_PARSER_SITE_URL . $url,
+        );
+      }
+      elseif (substr_count($url, '/profile/country/')) {
+        $links['country'] = array(
+          'name' => $link->nodeValue,
+          'url' => EX_PARSER_SITE_URL . $url,
+        );
+      }
+      elseif (substr_count($url, '/profile/profile_companies/')) {
+        $links['company'][] = array(
+          'name' => $link->nodeValue,
+          'url' => EX_PARSER_SITE_URL . $url,
+        );
+      }
+    }
+
+    $profile['links'] = $links;
+
+    // receive commits count.
+    $commits_obj = $xpath->query($xpath_pattern_total_commits);
+    $total_commits = 0;
+
+    foreach ($commits_obj as $commit) {
+      $total_commits = $commit->nodeValue;
+    }
+
+    $profile['total_commits'] = filter_var($total_commits, FILTER_SANITIZE_NUMBER_INT);
+  }
+
+  return $profile;
+}

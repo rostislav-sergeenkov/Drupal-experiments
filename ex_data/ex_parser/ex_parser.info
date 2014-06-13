@@ -1,0 +1,6 @@
+name = Drupal.org Parser
+description = Drupal.org Parser
+package = Experiments
+core = 7.x
+
+dependencies[] = ex
