@@ -4,3 +4,4 @@ package = Experiments
 core = 7.x
 
 dependencies[] = ex
+dependencies[] = ex_drupal
