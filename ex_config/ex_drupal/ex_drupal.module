@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Drupal.org Users feature.
+ */
+
+include_once 'ex_drupal.features.inc';

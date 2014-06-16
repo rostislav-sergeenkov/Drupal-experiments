@@ -1,6 +1,7 @@
 <?php
 
 define('EX_PARSER_SITE_URL', 'https://drupal.org');
+define('EX_PARSER_BATCH_LIMIT', 10000);
 
 // @todo Script should be run in background using batch operations
 
@@ -38,15 +39,27 @@ function ex_parser_menu() {
  * @param $form_state
  */
 function ex_parser_form($form, &$form_state) {
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Parse Page'),
+  $form['ex_parser_limit'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Batch Limit'),
+    '#description' => t('Limit Operations for batch'),
+    '#default_value' => variable_get('ex_parser_limit', EX_PARSER_BATCH_LIMIT),
+  );
+
+  $form['ex_parser_last_item'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Last User ID'),
+    '#description' => t('Last importet User ID'),
+    '#default_value' => variable_get('ex_parser_last_item', 1),
   );
 
   $url = 'https://drupal.org/user/971150';
   $data = ex_parser_get_profile_data($url);
+  var_dump($data);
 
-var_dump($data);
+  $form = system_settings_form($form);
+
+  $form['actions']['submit']['#value'] = t('Start Parsing');
 
   return $form;
 }
@@ -71,8 +84,7 @@ function ex_parser_form_submit($form, &$form_state) {
  */
 function ex_parser_get_profile_data($url) {
   $html = drupal_http_request($url);
-
-  $xpath_pattern_profile_links = ".//*[@class='main']/dl/dd/a";
+  // @todo Add login here  $xpath_pattern_profile_links = ".//*[@class='main']/dl/dd/a";
   $xpath_pattern_total_commits = ".//*[@class='main']/dl/dd/div/ul/li[last()]";
   $xpath_pattern_full_name = ".//*[@class='main']/dl/dt[text() = 'Full name']/following::dd[1]";
   $xpath_pattern_first_name = ".//*[@class='main']/dl/dt[text() = 'First or given name']/following::dd[1]";
@@ -118,7 +130,6 @@ function ex_parser_get_profile_data($url) {
 
   return $profile;
 }
-
 function ex_parser_get_profile_links($xpath, $pattern) {
   // Receive profile links.
   $links_obj = $xpath->query($pattern);
@@ -156,4 +167,19 @@ function ex_parser_get_profile_links($xpath, $pattern) {
       );
     }
   }
+}
+/**
+ * Save profile node.
+ *
+ * @param $profile
+ */
+function ex_parser_save_profile_node($profile) {
+  $node = new stdClass();
+  $node->title = '';
+  $node_type = '';
+  $node = node_object_prepare($node);
+
+  // $todo сделать функцию для каждого типа поля, так чтобы была одна строчка на поле
+
+  node_save($node);
 }
