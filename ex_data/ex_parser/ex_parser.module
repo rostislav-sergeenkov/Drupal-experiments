@@ -71,9 +71,17 @@ function ex_parser_form_submit($form, &$form_state) {
  */
 function ex_parser_get_profile_data($url) {
   $html = drupal_http_request($url);
+
   $xpath_pattern_profile_links = ".//*[@class='main']/dl/dd/a";
   $xpath_pattern_total_commits = ".//*[@class='main']/dl/dd/div/ul/li[last()]";
+  $xpath_pattern_full_name = ".//*[@class='main']/dl/dt[text() = 'Full name']/following::dd[1]";
+  $xpath_pattern_first_name = ".//*[@class='main']/dl/dt[text() = 'First or given name']/following::dd[1]";
+  $xpath_pattern_last_name = ".//*[@class='main']/dl/dt[text() = 'Last name or surname']/following::dd[1]";
+  $xpath_pattern_languages = ".//*[@class='main']/dl/dt[text() = 'Languages spoken']/following::dd[1]";
+  $xpath_pattern_website = ".//*[@class='main']/dl/dt[text() = 'My website']/following::dd[1]/a";
+
   $profile = array();
+  $profile['title'] = filter_var($url, FILTER_SANITIZE_NUMBER_INT);
   $profile['url'] = $url;
 
   if (isset($html->data)) {
@@ -86,46 +94,11 @@ function ex_parser_get_profile_data($url) {
 
     $xpath = new DOMXpath($dom);
 
-    // Receive profile links.
-    $links_obj = $xpath->query($xpath_pattern_profile_links);
-    $links = array();
 
-    // @todo check which fields can have multiple values
-    foreach ($links_obj as $link) {
-      $url = $link->getAttribute('href');
-
-      if (substr_count($url, 'linkedin.com')) {
-        $links['linkedin.com'] = $url;
-      }
-      elseif (substr_count($url, 'plus.google.com')) {
-        $links['plus.google.com'] = $url;
-      }
-      elseif (substr_count($url, 'drupal.stackexchange.com')) {
-        $links['drupal.stackexchange.com'] = $url;
-      }
-      elseif (substr_count($url, '/profile/profile_gender/')) {
-        $links['gender'] = array(
-          'name' => $link->nodeValue,
-          'url' => EX_PARSER_SITE_URL . $url,
-        );
-      }
-      elseif (substr_count($url, '/profile/country/')) {
-        $links['country'] = array(
-          'name' => $link->nodeValue,
-          'url' => EX_PARSER_SITE_URL . $url,
-        );
-      }
-      elseif (substr_count($url, '/profile/profile_companies/')) {
-        $links['company'][] = array(
-          'name' => $link->nodeValue,
-          'url' => EX_PARSER_SITE_URL . $url,
-        );
-      }
-    }
 
     $profile['links'] = $links;
 
-    // receive commits count.
+    // Total commits count.
     $commits_obj = $xpath->query($xpath_pattern_total_commits);
     $total_commits = 0;
 
@@ -134,7 +107,53 @@ function ex_parser_get_profile_data($url) {
     }
 
     $profile['total_commits'] = filter_var($total_commits, FILTER_SANITIZE_NUMBER_INT);
+
+    // Full name.
+    $full_name = $xpath->query($xpath_pattern_total_commits);
+
+    $xpath_pattern_full_name = ".//*[@class='main']/dl/dt[text() = 'Full name']/following::dd[1]";
+    $xpath_pattern_first_name = ".//*[@class='main']/dl/dt[text() = 'First or given name']/following::dd[1]";
+    $xpath_pattern_last_name = ".//*[@class='main']/dl/dt[text() = 'Last name or surname']/following::dd[1]";
   }
 
   return $profile;
+}
+
+function ex_parser_get_profile_links($xpath, $pattern) {
+  // Receive profile links.
+  $links_obj = $xpath->query($pattern);
+  $links = array();
+
+  // @todo check which fields can have multiple values
+  foreach ($links_obj as $link) {
+    $url = $link->getAttribute('href');
+
+    if (substr_count($url, 'linkedin.com')) {
+      $links['linkedin.com'] = $url;
+    }
+    elseif (substr_count($url, 'plus.google.com')) {
+      $links['plus.google.com'] = $url;
+    }
+    elseif (substr_count($url, 'drupal.stackexchange.com')) {
+      $links['drupal.stackexchange.com'] = $url;
+    }
+    elseif (substr_count($url, '/profile/profile_gender/')) {
+      $links['gender'] = array(
+        'name' => $link->nodeValue,
+        'url' => EX_PARSER_SITE_URL . $url,
+      );
+    }
+    elseif (substr_count($url, '/profile/country/')) {
+      $links['country'] = array(
+        'name' => $link->nodeValue,
+        'url' => EX_PARSER_SITE_URL . $url,
+      );
+    }
+    elseif (substr_count($url, '/profile/profile_companies/')) {
+      $links['company'][] = array(
+        'name' => $link->nodeValue,
+        'url' => EX_PARSER_SITE_URL . $url,
+      );
+    }
+  }
 }
