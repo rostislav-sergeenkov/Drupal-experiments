@@ -39,29 +39,138 @@ function ex_parser_menu() {
  * @param $form_state
  */
 function ex_parser_form($form, &$form_state) {
-  $form['ex_parser_limit'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Batch Limit'),
-    '#description' => t('Limit Operations for batch'),
-    '#default_value' => variable_get('ex_parser_limit', EX_PARSER_BATCH_LIMIT),
+//  $form['ex_parser_limit'] = array(
+//    '#type' => 'textfield',
+//    '#title' => t('Batch Limit'),
+//    '#description' => t('Limit Operations for batch'),
+//    '#default_value' => variable_get('ex_parser_limit', EX_PARSER_BATCH_LIMIT),
+//  );
+//
+//  $form['ex_parser_last_item'] = array(
+//    '#type' => 'textfield',
+//    '#title' => t('Last User ID'),
+//    '#description' => t('Last importet User ID'),
+//    '#default_value' => variable_get('ex_parser_last_item', 1),
+//  );
+
+//  $url = 'https://amsterdam2014.drupal.org/users/dahacouk';
+//  $data = ex_parser_get_profile_data_camp($url);
+//  dpm($data);
+
+//  $url = 'https://amsterdam2014.drupal.org/attendees';
+//  $urls = ex_parser_get_user_urls($url);
+//  dpm($urls);
+
+//  dpm(node_load(23));
+
+  $form['data'] = array(
+    '#markup' => l('Drupalcon Users', 'admin/ex/data/parser/data'),
   );
 
-  $form['ex_parser_last_item'] = array(
+  $form['url'] = array(
     '#type' => 'textfield',
-    '#title' => t('Last User ID'),
-    '#description' => t('Last importet User ID'),
-    '#default_value' => variable_get('ex_parser_last_item', 1),
+    '#title' => t('Page with links to user profiles'),
+    '#default_value' => 'https://amsterdam2014.drupal.org/attendees',
   );
 
-  $url = 'https://drupal.org/user/971150';
-  $data = ex_parser_get_profile_data($url);
-  var_dump($data);
+  $form['first_page'] = array(
+    '#type' => 'textfield',
+    '#title' => t('First page'),
+    '#default_value' => 0,
+  );
 
-  $form = system_settings_form($form);
+  $form['last_page'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Last page'),
+    '#default_value' => 21,
+  );
 
-  $form['actions']['submit']['#value'] = t('Start Parsing');
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+
+//  $form = system_settings_form($form);
+//
+//  $form['actions']['submit']['#value'] = t('Start Parsing');
 
   return $form;
+}
+
+function ex_parser_get_user_urls($url) {
+  $urls = array();
+  $html = drupal_http_request($url);
+
+  if (isset($html->data)) {
+    libxml_use_internal_errors(true);
+
+    $dom = new DOMDocument();
+    $dom->recover = true;
+    $dom->strictErrorChecking = false;
+    $dom->loadHTML($html->data);
+
+    $xpath = new DOMXpath($dom);
+
+    $xpath_pattern_userlink = ".//*/a[@class='username']";
+    $domain = 'https://amsterdam2014.drupal.org';
+
+    $links = $xpath->query($xpath_pattern_userlink);
+
+    foreach ($links as $link) {
+      $url = $link->getAttribute('href');
+      if (substr_count($url, '/users/')) {
+        $urls[] = $domain . $url;
+      }
+    }
+  }
+
+  return $urls;
+}
+
+function ex_parser_get_profile_data_camp($url) {
+  $html = drupal_http_request($url);
+
+  // XPath patterns.
+  $xpath_pattern_title = ".//h1";
+  $xpath_pattern_first_name = ".//*/div[contains(concat(' ',normalize-space(@class),' '),' field--name-field-profile-first ')]/div[@class='field__items']/div";
+  $xpath_pattern_last_name = ".//*/div[contains(concat(' ',normalize-space(@class),' '),' field--name-field-profile-last ')]/div[@class='field__items']/div";
+  $xpath_pattern_organization = ".//*/div[contains(concat(' ',normalize-space(@class),' '),' field--name-field-profile-org ')]/div[@class='field__items']/div";
+  $xpath_pattern_job_title = ".//*/div[contains(concat(' ',normalize-space(@class),' '),' field--name-field-profile-job-title ')]/div[@class='field__items']/div";
+  $xpath_pattern_interests = ".//*/div[contains(concat(' ',normalize-space(@class),' '),' field--name-field-profile-interests ')]/div[@class='field__items']/div";
+
+  $profile = array();
+  $profile['url'] = $url;
+
+  if (isset($html->data)) {
+    libxml_use_internal_errors(true);
+
+    $dom = new DOMDocument();
+    $dom->recover = true;
+    $dom->strictErrorChecking = false;
+    $dom->loadHTML($html->data);
+
+    $xpath = new DOMXpath($dom);
+
+    $profile['url'] = $url;
+    $profile['title'] = ex_parser_parse_field($xpath, $xpath_pattern_title);
+    $profile['first_name'] = ex_parser_parse_field($xpath, $xpath_pattern_first_name);
+    $profile['last_name'] = ex_parser_parse_field($xpath, $xpath_pattern_last_name);
+    $profile['organization'] = ex_parser_parse_field($xpath, $xpath_pattern_organization);
+    $profile['job_title'] = ex_parser_parse_field($xpath, $xpath_pattern_job_title);
+    $profile['interests'] = ex_parser_parse_field($xpath, $xpath_pattern_interests);
+  }
+
+  return $profile;
+}
+
+function ex_parser_parse_field($xpath, $xpath_pattern) {
+  $field = $xpath->query($xpath_pattern);
+  $field_processed = '';
+  foreach ($field as $item) {
+    $field_processed = $item->nodeValue;
+  }
+
+  return $field_processed;
 }
 
 /**
@@ -71,8 +180,44 @@ function ex_parser_form($form, &$form_state) {
  * @param $form_state
  */
 function ex_parser_form_submit($form, &$form_state) {
-  $result = drupal_http_request('https://drupal.org/profile/country/Belarus');
-  dpm($result);
+  $first_page = (int) $form_state['values']['first_page']; // @todo move it to configuration
+  $last_page = (int) $form_state['values']['last_page']; // @todo move it to configuration
+
+  for ($i = $first_page; $i < ($last_page + 1); $i++) {
+    $page_url = url(trim($form_state['values']['url']), array('query' => array('page' => $i)));
+
+//    dpm($page_url);
+
+    $profile_urls = ex_parser_get_user_urls($page_url);
+
+    foreach ($profile_urls as $profile_url) {
+      $profile = ex_parser_get_profile_data_camp($profile_url);
+
+      $node = (object) NULL;
+      $node->type = 'drupalcon_user';
+      $node->uid = 0;
+      $node->created = strtotime("now");
+      $node->changed = strtotime("now");
+      $node->status = 1;
+      $node->comment = 0;
+      $node->promote = 0;
+      $node->moderate = 0;
+      $node->sticky = 0;
+      $node->language = 'und';
+      node_object_prepare($node);
+
+      $node->title = $profile['title'];
+      $node->field_profile_url['und'][0]['url'] = $profile['url'];
+      $node->field_profile_first_name['und'][0]['value'] = $profile['first_name'];
+      $node->field_profile_second_name['und'][0]['value'] = $profile['last_name'];
+      $node->field_profile_organization['und'][0]['value'] = $profile['organization'];
+      $node->field_profile_job_title['und'][0]['value'] = $profile['job_title'];
+      $node->field_profile_about['und'][0]['value'] = $profile['interests'];
+      $node->field_profile_about['und'][0]['format'] = 'filtered_html';
+
+      node_save($node);
+    }
+  }
 }
 
 /**
@@ -108,7 +253,7 @@ function ex_parser_get_profile_data($url) {
 
 
 
-    $profile['links'] = $links;
+//    $profile['links'] = $links;
 
     // Total commits count.
     $commits_obj = $xpath->query($xpath_pattern_total_commits);
