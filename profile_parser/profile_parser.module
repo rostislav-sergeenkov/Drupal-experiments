@@ -1,0 +1,188 @@
+<?php
+/**
+ * @file
+ * Code for the Drupal profile parser feature.
+ */
+
+include_once 'profile_parser.features.inc';
+
+define('PROFILE_PARSER_START_PAGE_URL', 'https://amsterdam2014.drupal.org/attendees');
+define('PROFILE_PARSER_PAGER_PARAM', 'page');
+define('PROFILE_PARSER_FIRST_PAGE', 0);
+define('PROFILE_PARSER_LAST_PAGE', 21);
+
+/**
+ * Implements hook_menu().
+ */
+function profile_parser_menu() {
+  $items['admin/profile_parser'] = array(
+    'title' => 'Drupal profile parser',
+    'access arguments' => array('administer profile parser'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('profile_parser_admin_form'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function profile_parser_permission() {
+  return array(
+    'administer profile parser' => array(
+      'title' => t('Administer profile parser'),
+    ),
+    'view parsed drupal profiles page' => array(
+      'title' => t('View parsed user profiles page'),
+    ),
+  );
+}
+
+/**
+ * Builds admin settings form for profile parser.
+ */
+function profile_parser_admin_form() {
+  if (user_access('view parsed drupal profiles page')) {
+    $form['data'] = array(
+      '#markup' => l('Drupal User Profiles', 'admin/profile_parser/data'),
+    );
+  }
+
+  $form['url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Page with links to user profiles'),
+    '#default_value' => PROFILE_PARSER_START_PAGE_URL,
+  );
+
+  $form['param'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Pager parameter'),
+    '#default_value' => PROFILE_PARSER_PAGER_PARAM,
+  );
+
+  $form['first_page'] = array(
+    '#type' => 'textfield',
+    '#title' => t('First page'),
+    '#default_value' => PROFILE_PARSER_FIRST_PAGE,
+  );
+
+  $form['last_page'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Last page'),
+    '#default_value' => PROFILE_PARSER_LAST_PAGE,
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Start parsing'),
+  );
+
+  return $form;
+}
+
+/**
+ * Parses user profile page.
+ *
+ * @param $url
+ *
+ * @return array
+ */
+function profile_parser_get_profile_data_camp($url) {
+  $profile = array();
+
+  $html = drupal_http_request($url);
+
+  // XPath patterns.
+  $xpath_pattern_title = ".//h1";
+  $xpath_pattern_first_name = ".//*/div[contains(concat(' ',normalize-space(@class),' '),' field--name-field-profile-first ')]/div[@class='field__items']/div";
+  $xpath_pattern_last_name = ".//*/div[contains(concat(' ',normalize-space(@class),' '),' field--name-field-profile-last ')]/div[@class='field__items']/div";
+  $xpath_pattern_organization = ".//*/div[contains(concat(' ',normalize-space(@class),' '),' field--name-field-profile-org ')]/div[@class='field__items']/div";
+  $xpath_pattern_job_title = ".//*/div[contains(concat(' ',normalize-space(@class),' '),' field--name-field-profile-job-title ')]/div[@class='field__items']/div";
+  $xpath_pattern_interests = ".//*/div[contains(concat(' ',normalize-space(@class),' '),' field--name-field-profile-interests ')]/div[@class='field__items']/div";
+
+  if (isset($html->data)) {
+    libxml_use_internal_errors(true);
+
+    $dom = new DOMDocument();
+    $dom->recover = true;
+    $dom->strictErrorChecking = false;
+    $dom->loadHTML($html->data);
+
+    $xpath = new DOMXpath($dom);
+
+    $profile['url'] = $url;
+    $profile['title'] = profile_parser_parse_field($xpath, $xpath_pattern_title);
+    $profile['first_name'] = profile_parser_parse_field($xpath, $xpath_pattern_first_name);
+    $profile['last_name'] = profile_parser_parse_field($xpath, $xpath_pattern_last_name);
+    $profile['organization'] = profile_parser_parse_field($xpath, $xpath_pattern_organization);
+    $profile['job_title'] = profile_parser_parse_field($xpath, $xpath_pattern_job_title);
+    $profile['interests'] = profile_parser_parse_field($xpath, $xpath_pattern_interests);
+  }
+
+  return $profile;
+}
+
+/**
+ * Submit callback for profile parser form.
+ *
+ * @param $form
+ * @param $form_state
+ */
+function profile_parser_form_submit($form, &$form_state) {
+  $param = check_plain(trim($form_state['values']['param']));
+  $init_url = trim($form_state['values']['url']);
+  $first_page = (int) $form_state['values']['first_page'];
+  $last_page = (int) $form_state['values']['last_page'];
+
+  for ($i = $first_page; $i < ($last_page + 1); $i++) {
+    $page_url = url($init_url, array('query' => array($param => $i)));
+    $profile_urls = profile_parser_get_user_urls($page_url);
+
+    foreach ($profile_urls as $profile_url) {
+      $profile = profile_parser_get_profile_data_camp($profile_url);
+
+      $node = (object) NULL;
+      $node->type = 'drupalcon_user';
+      $node->uid = 0;
+      $node->created = strtotime("now");
+      $node->changed = strtotime("now");
+      $node->status = 1;
+      $node->comment = 0;
+      $node->promote = 0;
+      $node->moderate = 0;
+      $node->sticky = 0;
+      $node->language = 'und';
+      node_object_prepare($node);
+
+      $node->title = $profile['title'];
+      $node->field_profile_url['und'][0]['url'] = $profile['url'];
+      $node->field_profile_first_name['und'][0]['value'] = $profile['first_name'];
+      $node->field_profile_second_name['und'][0]['value'] = $profile['last_name'];
+      $node->field_profile_organization['und'][0]['value'] = $profile['organization'];
+      $node->field_profile_job_title['und'][0]['value'] = $profile['job_title'];
+      $node->field_profile_about['und'][0]['value'] = $profile['interests'];
+      $node->field_profile_about['und'][0]['format'] = 'filtered_html';
+
+      node_save($node);
+    }
+  }
+}
+
+/**
+ * Parses single field that matches specified xpath pattern.
+ *
+ * @param $xpath
+ * @param $xpath_pattern
+ *
+ * @return string
+ */
+function profile_parser_parse_field($xpath, $xpath_pattern) {
+  $field = $xpath->query($xpath_pattern);
+  $field_processed = '';
+  foreach ($field as $item) {
+    $field_processed = $item->nodeValue;
+  }
+
+  return $field_processed;
+}
