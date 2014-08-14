@@ -34,6 +34,8 @@ function profile_parser_views_default_views() {
   $handler->display->display_options['pager']['options']['offset'] = '0';
   $handler->display->display_options['pager']['options']['id'] = '0';
   $handler->display->display_options['pager']['options']['quantity'] = '9';
+  $handler->display->display_options['pager']['options']['expose']['items_per_page'] = TRUE;
+  $handler->display->display_options['pager']['options']['expose']['items_per_page_options'] = '50, 100, 200, 300, 400, 500';
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['columns'] = array(
     'title' => 'title',
@@ -96,6 +98,11 @@ function profile_parser_views_default_views() {
       'empty_column' => 0,
     ),
   );
+  /* Header: Global: Result summary */
+  $handler->display->display_options['header']['result']['id'] = 'result';
+  $handler->display->display_options['header']['result']['table'] = 'views';
+  $handler->display->display_options['header']['result']['field'] = 'result';
+  $handler->display->display_options['header']['result']['content'] = 'Displaying @start - @end of @total profiles';
   /* Field: Content: Title */
   $handler->display->display_options['fields']['title']['id'] = 'title';
   $handler->display->display_options['fields']['title']['table'] = 'node';
@@ -148,6 +155,22 @@ function profile_parser_views_default_views() {
     'drupalcon_user' => 'drupalcon_user',
   );
   $handler->display->display_options['filters']['type']['group'] = 1;
+  /* Filter criterion: Content: Title */
+  $handler->display->display_options['filters']['title']['id'] = 'title';
+  $handler->display->display_options['filters']['title']['table'] = 'node';
+  $handler->display->display_options['filters']['title']['field'] = 'title';
+  $handler->display->display_options['filters']['title']['operator'] = 'contains';
+  $handler->display->display_options['filters']['title']['group'] = 1;
+  $handler->display->display_options['filters']['title']['exposed'] = TRUE;
+  $handler->display->display_options['filters']['title']['expose']['operator_id'] = 'title_op';
+  $handler->display->display_options['filters']['title']['expose']['label'] = 'Nickname';
+  $handler->display->display_options['filters']['title']['expose']['operator'] = 'title_op';
+  $handler->display->display_options['filters']['title']['expose']['identifier'] = 'title';
+  $handler->display->display_options['filters']['title']['expose']['remember_roles'] = array(
+    2 => '2',
+    1 => 0,
+    3 => 0,
+  );
   /* Filter criterion: Content: First Name (field_profile_first_name) */
   $handler->display->display_options['filters']['field_profile_first_name_value']['id'] = 'field_profile_first_name_value';
   $handler->display->display_options['filters']['field_profile_first_name_value']['table'] = 'field_data_field_profile_first_name';
@@ -212,6 +235,21 @@ function profile_parser_views_default_views() {
     1 => 0,
     3 => 0,
   );
+  /* Filter criterion: Content: About (field_profile_about) */
+  $handler->display->display_options['filters']['field_profile_about_value']['id'] = 'field_profile_about_value';
+  $handler->display->display_options['filters']['field_profile_about_value']['table'] = 'field_data_field_profile_about';
+  $handler->display->display_options['filters']['field_profile_about_value']['field'] = 'field_profile_about_value';
+  $handler->display->display_options['filters']['field_profile_about_value']['operator'] = 'contains';
+  $handler->display->display_options['filters']['field_profile_about_value']['exposed'] = TRUE;
+  $handler->display->display_options['filters']['field_profile_about_value']['expose']['operator_id'] = 'field_profile_about_value_op';
+  $handler->display->display_options['filters']['field_profile_about_value']['expose']['label'] = 'About';
+  $handler->display->display_options['filters']['field_profile_about_value']['expose']['operator'] = 'field_profile_about_value_op';
+  $handler->display->display_options['filters']['field_profile_about_value']['expose']['identifier'] = 'field_profile_about_value';
+  $handler->display->display_options['filters']['field_profile_about_value']['expose']['remember_roles'] = array(
+    2 => '2',
+    1 => 0,
+    3 => 0,
+  );
 
   /* Display: Page */
   $handler = $view->new_display('page', 'Page', 'page');
@@ -238,6 +276,7 @@ function profile_parser_views_default_views() {
     t('‹ previous'),
     t('next ›'),
     t('last »'),
+    t('Displaying @start - @end of @total profiles'),
     t('Nickname'),
     t('First Name'),
     t('Second Name'),
