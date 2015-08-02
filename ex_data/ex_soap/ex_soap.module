@@ -17,13 +17,13 @@ function ex_soap_menu() {
     'weight' => 1,
   );
 
-  $items['admin/ex/data/soap/php_client'] = array(
-    'title' => 'PHP Client',
-    'description' => 'PHP Client',
+  $items['admin/ex/data/soap/soap_client'] = array(
+    'title' => 'SOAP Client',
+    'description' => 'SOAP Client',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('ex_soap_php_client_form'),
+    'page arguments' => array('ex_soap_client_form'),
     'access arguments' => array('administer my experiments'),
-    'file' => 'ex_soap.php_client.inc',
+    'file' => 'ex_soap.client.inc',
     'weight' => 1,
   );
 
